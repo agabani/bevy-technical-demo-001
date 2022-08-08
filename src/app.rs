@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::character;
+
 pub fn run() -> crate::Result<()> {
     #[cfg(any(feature = "client", feature = "server"))]
     let runtime = tokio::runtime::Runtime::new()?;
@@ -16,6 +18,8 @@ pub fn run() -> crate::Result<()> {
         app.add_plugin(bevy::log::LogPlugin::default())
             .add_plugins(MinimalPlugins);
     }
+
+    app.add_plugin(character::Plugin);
 
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]

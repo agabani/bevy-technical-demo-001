@@ -1,4 +1,5 @@
 pub mod app;
+mod character;
 pub mod config;
 #[cfg(feature = "server")]
 mod http_server;

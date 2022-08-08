@@ -11,13 +11,17 @@ WORKDIR /home/appuser/app
 COPY .docker/main.rs src/
 COPY .docker/lib.rs src/
 
+COPY .docker/main.rs examples/quic_client.rs
+COPY .docker/main.rs examples/quic_server.rs
+COPY .docker/main.rs examples/tls.rs
+
 COPY Cargo.lock Cargo.lock
 COPY Cargo.toml Cargo.toml
 
 RUN cargo build --release
 
 # 1c: Build the application using the real source code
-COPY src/ src/
+COPY . .
 
 RUN cargo build --release --features "server"
 
@@ -26,10 +30,6 @@ FROM scratch
 
 USER 10000:10000
 
-EXPOSE 443
+COPY --chown=0:0 --from=builder /home/appuser/app/target/release/bevy-technical-demo /
 
-WORKDIR /
-
-COPY --chown=0:0 --from=builder /home/appuser/app/target/release/bevy-technical-demo .
-
-CMD [ "./bevy-technical-demo" ]
+CMD [ "/bevy-technical-demo" ]

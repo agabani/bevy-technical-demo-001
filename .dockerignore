@@ -1,6 +1,7 @@
 *
 
 !/.docker
+!/examples
 !/src
 !/Cargo.lock
 !/Cargo.toml

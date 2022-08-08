@@ -1,26 +1,34 @@
 #[derive(Debug)]
-pub enum Event {
-    ConnectionCreated(ConnectionCreatedEvent),
-    ConnectionDestroyed(ConnectionDestroyedEvent),
-    PayloadReceived(PayloadReceivedEvent),
+pub struct Event {
+    pub connection_id: usize,
+    pub data: Data,
 }
 
 #[derive(Debug)]
-pub struct ConnectionCreatedEvent {
+pub struct Endpoint<T> {
     pub connection_id: usize,
+    pub data: T,
+}
+
+#[derive(Debug)]
+pub enum Data {
+    Connection(Connection),
+    Payload(Payload),
+}
+
+#[derive(Debug)]
+pub enum Connection {
+    Created(Created),
+    Destroyed(Destroyed),
+}
+
+#[derive(Debug)]
+pub struct Created {
     pub sender: tokio::sync::mpsc::UnboundedSender<crate::protocol::Payload>,
 }
 
 #[derive(Debug)]
-pub struct ConnectionDestroyedEvent {
-    pub connection_id: usize,
-}
-
-#[derive(Debug)]
-pub struct PayloadReceivedEvent {
-    pub connection_id: usize,
-    pub payload: Payload,
-}
+pub struct Destroyed;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 #[serde(tag = "version", content = "payload")]
@@ -37,6 +45,42 @@ pub enum Version1 {
 
     #[serde(rename = "pong")]
     Pong,
+
+    #[serde(rename = "spawn")]
+    Spawn(Spawn),
+
+    #[serde(rename = "spawned")]
+    Spawned(Spawned),
+
+    #[serde(rename = "despawn")]
+    Despawn(Despawn),
+
+    #[serde(rename = "despawned")]
+    Despawned(Despawned),
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct Spawn;
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct Spawned {
+    #[serde(rename = "id")]
+    id: String,
+
+    #[serde(rename = "x")]
+    x: f32,
+
+    #[serde(rename = "y")]
+    y: f32,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct Despawn;
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct Despawned {
+    #[serde(rename = "id")]
+    id: String,
 }
 
 impl Payload {

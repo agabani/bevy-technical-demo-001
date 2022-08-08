@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
+use crate::protocol;
+
 pub(crate) struct Plugin;
 
 impl bevy::prelude::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<crate::protocol::ConnectionCreatedEvent>()
-            .add_event::<crate::protocol::ConnectionDestroyedEvent>()
-            .add_event::<crate::protocol::PayloadReceivedEvent>()
+        app.add_event::<protocol::Endpoint<protocol::Created>>()
+            .add_event::<protocol::Endpoint<protocol::Destroyed>>()
+            .add_event::<protocol::Endpoint<protocol::Payload>>()
             .add_system(multiplex)
             .add_system(create_connection)
             .add_system(destroy_connection)
@@ -17,24 +19,35 @@ impl bevy::prelude::Plugin for Plugin {
 #[derive(Component)]
 pub(crate) struct Connection {
     connection_id: usize,
-    _sender: tokio::sync::mpsc::UnboundedSender<crate::protocol::Payload>,
+    _sender: tokio::sync::mpsc::UnboundedSender<protocol::Payload>,
 }
 
 fn multiplex(
-    mut receiver: ResMut<tokio::sync::mpsc::UnboundedReceiver<crate::protocol::Event>>,
-    mut connection_created_writer: EventWriter<crate::protocol::ConnectionCreatedEvent>,
-    mut connection_destroyed_writer: EventWriter<crate::protocol::ConnectionDestroyedEvent>,
-    mut payload_received_writer: EventWriter<crate::protocol::PayloadReceivedEvent>,
+    mut receiver: ResMut<tokio::sync::mpsc::UnboundedReceiver<protocol::Event>>,
+    mut connection_created_writer: EventWriter<protocol::Endpoint<protocol::Created>>,
+    mut connection_destroyed_writer: EventWriter<protocol::Endpoint<protocol::Destroyed>>,
+    mut payload_received_writer: EventWriter<protocol::Endpoint<protocol::Payload>>,
 ) {
     match receiver.try_recv() {
-        Ok(event) => match event {
-            crate::protocol::Event::ConnectionCreated(event) => {
-                connection_created_writer.send(event)
-            }
-            crate::protocol::Event::ConnectionDestroyed(event) => {
-                connection_destroyed_writer.send(event)
-            }
-            crate::protocol::Event::PayloadReceived(event) => payload_received_writer.send(event),
+        Ok(event) => match event.data {
+            protocol::Data::Connection(connection) => match connection {
+                protocol::Connection::Created(created) => {
+                    connection_created_writer.send(protocol::Endpoint {
+                        connection_id: event.connection_id,
+                        data: created,
+                    })
+                }
+                protocol::Connection::Destroyed(destroyed) => {
+                    connection_destroyed_writer.send(protocol::Endpoint {
+                        connection_id: event.connection_id,
+                        data: destroyed,
+                    })
+                }
+            },
+            protocol::Data::Payload(payload) => payload_received_writer.send(protocol::Endpoint {
+                connection_id: event.connection_id,
+                data: payload,
+            }),
         },
         Err(err) => match err {
             tokio::sync::mpsc::error::TryRecvError::Empty => {}
@@ -45,7 +58,7 @@ fn multiplex(
 
 fn create_connection(
     mut commands: Commands,
-    mut reader: EventReader<crate::protocol::ConnectionCreatedEvent>,
+    mut reader: EventReader<protocol::Endpoint<protocol::Created>>,
 ) {
     for event in reader.iter() {
         let span = info_span!("connection", connection_id = event.connection_id);
@@ -55,7 +68,7 @@ fn create_connection(
 
         let connection = Connection {
             connection_id: event.connection_id,
-            _sender: event.sender.clone(),
+            _sender: event.data.sender.clone(),
         };
 
         commands
@@ -71,7 +84,7 @@ fn create_connection(
 fn destroy_connection(
     mut commands: Commands,
     mut query: Query<(Entity, &Connection)>,
-    mut reader: EventReader<crate::protocol::ConnectionDestroyedEvent>,
+    mut reader: EventReader<protocol::Endpoint<protocol::Destroyed>>,
 ) {
     for event in reader.iter() {
         for (entity, connection) in query.iter_mut() {
@@ -86,11 +99,11 @@ fn destroy_connection(
     }
 }
 
-fn read_payload(mut reader: EventReader<crate::protocol::PayloadReceivedEvent>) {
+fn read_payload(mut reader: EventReader<protocol::Endpoint<protocol::Payload>>) {
     for event in reader.iter() {
         let span = info_span!("connection", connection_id = ?event.connection_id);
         let _guard = span.enter();
 
-        debug!(payload = ?event.payload, "read");
+        debug!(payload = ?event.data, "read");
     }
 }

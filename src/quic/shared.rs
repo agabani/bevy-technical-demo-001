@@ -36,12 +36,12 @@ pub(super) async fn handle_connection(
 
     let (s, r) = tokio::sync::mpsc::unbounded_channel();
 
-    sender.send(protocol::Event::ConnectionCreated(
-        protocol::ConnectionCreatedEvent {
-            connection_id: connection.stable_id(),
+    sender.send(protocol::Event {
+        connection_id: connection.stable_id(),
+        data: protocol::Data::Connection(protocol::Connection::Created(protocol::Created {
             sender: s,
-        },
-    ))?;
+        })),
+    })?;
 
     let result = tokio::select! {
         result = handle_incoming_bi_streams(connection.clone(), sender.clone(), bi_streams) => result,
@@ -50,11 +50,10 @@ pub(super) async fn handle_connection(
         result = handle_outgoing_stream(connection.clone(), r) => result,
     };
 
-    sender.send(protocol::Event::ConnectionDestroyed(
-        protocol::ConnectionDestroyedEvent {
-            connection_id: connection.stable_id(),
-        },
-    ))?;
+    sender.send(protocol::Event {
+        connection_id: connection.stable_id(),
+        data: protocol::Data::Connection(protocol::Connection::Destroyed(protocol::Destroyed)),
+    })?;
 
     result
 }
@@ -116,27 +115,25 @@ pub(super) async fn handle_incoming_bi_request(
     recv: quinn::RecvStream,
     mut send: quinn::SendStream,
 ) -> crate::Result<()> {
-    let request_bytes = recv.read_to_end(64 * 1024).await?;
-    let request = protocol::Payload::deserialize(&request_bytes)?;
+    let payload_bytes = recv.read_to_end(64 * 1024).await?;
+    let payload = protocol::Payload::deserialize(&payload_bytes)?;
 
-    match &request {
+    match &payload {
         protocol::Payload::V1(v1) => match v1 {
             protocol::Version1::Ping => {
-                let response = protocol::Payload::V1(protocol::Version1::Pong);
-                send.write_all(&response.serialize()?).await?;
+                let payload = protocol::Payload::V1(protocol::Version1::Pong);
+                send.write_all(&payload.serialize()?).await?;
             }
-            protocol::Version1::Pong => todo!(),
+            _ => {}
         },
     };
 
     send.finish().await?;
 
-    sender.send(protocol::Event::PayloadReceived(
-        protocol::PayloadReceivedEvent {
-            connection_id: connection.stable_id(),
-            payload: request,
-        },
-    ))?;
+    sender.send(protocol::Event {
+        connection_id: connection.stable_id(),
+        data: protocol::Data::Payload(payload),
+    })?;
 
     Ok(())
 }
@@ -146,15 +143,13 @@ pub(super) async fn handle_incoming_uni_request(
     sender: tokio::sync::mpsc::UnboundedSender<protocol::Event>,
     recv: quinn::RecvStream,
 ) -> crate::Result<()> {
-    let payload = recv.read_to_end(64 * 1024).await?;
-    let request = protocol::Payload::deserialize(&payload)?;
+    let payload_bytes = recv.read_to_end(64 * 1024).await?;
+    let payload = protocol::Payload::deserialize(&payload_bytes)?;
 
-    sender.send(protocol::Event::PayloadReceived(
-        protocol::PayloadReceivedEvent {
-            connection_id: connection.stable_id(),
-            payload: request,
-        },
-    ))?;
+    sender.send(protocol::Event {
+        connection_id: connection.stable_id(),
+        data: protocol::Data::Payload(payload),
+    })?;
 
     Ok(())
 }

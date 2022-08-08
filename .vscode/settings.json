@@ -1,3 +1,11 @@
 {
-  "cSpell.words": ["despawn", "pemfile", "quic", "rcgen", "rustls", "serde"]
+  "cSpell.words": [
+    "despawn",
+    "Despawned",
+    "pemfile",
+    "quic",
+    "rcgen",
+    "rustls",
+    "serde"
+  ]
 }

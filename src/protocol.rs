@@ -62,25 +62,25 @@ pub enum Version1 {
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Spawn;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Spawned {
     #[serde(rename = "id")]
-    id: String,
+    pub id: String,
 
     #[serde(rename = "x")]
-    x: f32,
+    pub x: f32,
 
     #[serde(rename = "y")]
-    y: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Despawn;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Despawned {
     #[serde(rename = "id")]
-    id: String,
+    pub id: String,
 }
 
 impl Payload {

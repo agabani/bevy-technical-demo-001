@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::tracing::Instrument};
 use futures::StreamExt as _;
 
 use crate::protocol;
@@ -7,55 +7,61 @@ pub(super) async fn handle_connection(
     connection: quinn::NewConnection,
     sender: tokio::sync::mpsc::UnboundedSender<protocol::Event>,
 ) -> crate::Result<()> {
-    let span = info_span!(
-        "connection",
-        remote_address = ?connection.connection.remote_address(),
-        connection_id = connection.connection.stable_id(),
-        protocol = connection
-            .connection
-            .handshake_data()
-            .unwrap()
-            .downcast::<quinn::crypto::rustls::HandshakeData>()
-            .unwrap()
-            .protocol
-            .map_or_else(
-                || "<none>".into(),
-                |x| String::from_utf8_lossy(&x).into_owned()
-            )
-    );
-    let _guard = span.enter();
+    let connection_id = connection.connection.stable_id();
+    let remote_address = connection.connection.remote_address();
+    let protocol = connection
+        .connection
+        .handshake_data()
+        .unwrap()
+        .downcast::<quinn::crypto::rustls::HandshakeData>()
+        .unwrap()
+        .protocol
+        .map_or_else(
+            || "<none>".into(),
+            |x| String::from_utf8_lossy(&x).into_owned(),
+        );
 
-    info!("established");
+    async {
+        info!("established");
 
-    let quinn::NewConnection {
-        connection,
-        uni_streams,
-        bi_streams,
-        ..
-    } = connection;
+        let quinn::NewConnection {
+            connection,
+            uni_streams,
+            bi_streams,
+            ..
+        } = connection;
 
-    let (s, r) = tokio::sync::mpsc::unbounded_channel();
+        let (s, r) = tokio::sync::mpsc::unbounded_channel();
 
-    sender.send(protocol::Event {
-        connection_id: connection.stable_id(),
-        data: protocol::Data::Connection(protocol::Connection::Created(protocol::Created {
-            sender: s,
-        })),
-    })?;
+        sender.send(protocol::Event {
+            connection_id: connection.stable_id(),
+            data: protocol::Data::Connection(protocol::Connection::Created(protocol::Created {
+                sender: s,
+            })),
+        })?;
 
-    let result = tokio::select! {
-        result = handle_incoming_bi_streams(connection.clone(), sender.clone(), bi_streams) => result,
-        result = handle_incoming_uni_streams(connection.clone(), sender.clone(), uni_streams) => result,
-        result = handle_outgoing_keep_alive(connection.clone()) => result,
-        result = handle_outgoing_stream(connection.clone(), r) => result,
-    };
+        let result = tokio::select! {
+            result = handle_incoming_bi_streams(connection.clone(), sender.clone(), bi_streams) => result,
+            result = handle_incoming_uni_streams(connection.clone(), sender.clone(), uni_streams) => result,
+            result = handle_outgoing_keep_alive(connection.clone()) => result,
+            result = handle_outgoing_stream(connection.clone(), r) => result,
+        };
 
-    sender.send(protocol::Event {
-        connection_id: connection.stable_id(),
-        data: protocol::Data::Connection(protocol::Connection::Destroyed(protocol::Destroyed)),
-    })?;
+        sender.send(protocol::Event {
+            connection_id: connection.stable_id(),
+            data: protocol::Data::Connection(protocol::Connection::Destroyed(protocol::Destroyed)),
+        })?;
 
     result
+
+    }
+        .instrument(info_span!(
+            "connection",
+            remote_address = ?remote_address,
+            connection_id = connection_id,
+            protocol = protocol
+        ))
+        .await
 }
 
 pub(super) async fn handle_incoming_bi_streams(

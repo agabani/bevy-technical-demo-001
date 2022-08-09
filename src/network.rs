@@ -22,10 +22,10 @@ impl bevy::prelude::Plugin for Plugin {
 }
 
 #[derive(Component)]
-pub(crate) struct Connection {
-    connection_id: usize,
-    _sender: tokio::sync::mpsc::UnboundedSender<protocol::Payload>,
-}
+pub(crate) struct Connection(pub(crate) tokio::sync::mpsc::UnboundedSender<protocol::Payload>);
+
+#[derive(Component)]
+pub(crate) struct ConnectionId(pub(crate) usize);
 
 fn multiplex(
     mut receiver: ResMut<tokio::sync::mpsc::UnboundedReceiver<protocol::Event>>,
@@ -87,27 +87,21 @@ fn multiplex(
 
 fn create_connection(
     mut commands: Commands,
-    mut reader: EventReader<protocol::Endpoint<protocol::Created>>,
+    mut events: EventReader<protocol::Endpoint<protocol::Created>>,
 ) {
-    for event in reader.iter() {
+    for event in events.iter() {
         let span = info_span!("connection", connection_id = event.connection_id);
         let _guard = span.enter();
 
-        info!("creating connection");
-
-        let connection = Connection {
-            connection_id: event.connection_id,
-            _sender: event.data.sender.clone(),
-        };
-
-        commands
+        let entity = commands
             .spawn()
-            .insert(Name::new(format!(
-                "connection {}",
-                connection.connection_id
-            )))
-            .insert(connection);
+            .insert(Name::new("connection"))
+            .insert(Connection(event.data.sender.clone()))
+            .insert(ConnectionId(event.connection_id))
+            .id();
+        info!(entity_id = entity.id(), "connection created");
 
+        // TODO: start workflow from UI
         #[cfg(feature = "client")]
         event
             .data
@@ -121,18 +115,19 @@ fn create_connection(
 
 fn destroy_connection(
     mut commands: Commands,
-    mut query: Query<(Entity, &Connection)>,
-    mut reader: EventReader<protocol::Endpoint<protocol::Destroyed>>,
+    mut events: EventReader<protocol::Endpoint<protocol::Destroyed>>,
+    query: Query<(Entity, &Connection, &ConnectionId)>,
 ) {
-    for event in reader.iter() {
-        for (entity, connection) in query.iter_mut() {
-            let span = info_span!("connection", connection_id = connection.connection_id);
+    for event in events.iter() {
+        for (entity, _, connection_id) in query
+            .iter()
+            .filter(|(_, _, connection_id)| event.connection_id == connection_id.0)
+        {
+            let span = info_span!("connection", connection_id = connection_id.0);
             let _guard = span.enter();
 
-            if connection.connection_id == event.connection_id {
-                info!("destroying connection");
-                commands.entity(entity).despawn();
-            }
+            commands.entity(entity).despawn();
+            info!(entity_id = entity.id(), "connection destroyed");
         }
     }
 }

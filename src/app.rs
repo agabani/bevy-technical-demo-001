@@ -28,7 +28,7 @@ pub fn run() -> crate::Result<()> {
 
         let config = config::load(&[])?;
 
-        runtime.block_on(database::migrate(&config))?;
+        runtime.block_on(database::Database::migrate(&config))?;
     }
 
     // configure networking

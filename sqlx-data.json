@@ -1,0 +1,23 @@
+{
+  "db": "PostgreSQL",
+  "bb045e628775017adaa85765f9caa96e57ec9f9d8e182aa58a4bdd3fa51e6efd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO server (ip_address, last_seen)\nVALUES ($1, NOW())\nON CONFLICT (ip_address) DO UPDATE SET last_seen = NOW()\nRETURNING id;\n"
+  }
+}

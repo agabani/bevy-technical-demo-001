@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.5.13"
+axum = "0.5.15"
 bevy = "0.8"
 config = "0.13.2"
 futures = "0.3.21"

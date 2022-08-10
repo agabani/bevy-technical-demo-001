@@ -18,6 +18,15 @@ impl bevy::prelude::Plugin for Plugin {
             // despawn
             .add_event::<protocol::Endpoint<protocol::Despawn>>()
             .add_event::<protocol::Endpoint<protocol::Despawned>>();
+
+        #[cfg(feature = "server")]
+        {
+            let my_local_ip = local_ip_address::local_ip().unwrap();
+            info!(
+                ip = ?my_local_ip,
+                "Server IP",
+            );
+        }
     }
 }
 

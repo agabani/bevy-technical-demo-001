@@ -21,6 +21,16 @@ pub fn run() -> crate::Result<()> {
 
     app.add_plugin(character::Plugin);
 
+    // configure database
+    #[cfg(feature = "server")]
+    {
+        use crate::{config, database};
+
+        let config = config::load(&[])?;
+
+        runtime.block_on(database::migrate(&config))?;
+    }
+
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]
     {

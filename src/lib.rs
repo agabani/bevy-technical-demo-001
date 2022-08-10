@@ -2,6 +2,8 @@ pub mod app;
 mod character;
 pub mod config;
 #[cfg(feature = "server")]
+mod database;
+#[cfg(feature = "server")]
 mod http_server;
 mod network;
 pub mod protocol;

@@ -30,6 +30,7 @@ FROM scratch
 
 USER 10000:10000
 
+COPY --chown=0:0 migrations/ /migrations/
 COPY --chown=0:0 --from=builder /home/appuser/app/target/release/bevy-technical-demo /
 
 CMD [ "/bevy-technical-demo" ]

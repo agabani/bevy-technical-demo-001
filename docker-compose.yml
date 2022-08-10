@@ -6,6 +6,10 @@ services:
     deploy:
       replicas: 3
     environment:
+      - BEVY_TECHNICAL_DEMO__DATABASE__HOST=postgres
+      - BEVY_TECHNICAL_DEMO__DATABASE__REQUIRE_SSL=false
+      - BEVY_TECHNICAL_DEMO__DATABASE__MIGRATION__CREATE_DATABASE=true
+      - BEVY_TECHNICAL_DEMO__DATABASE__MIGRATION__MIGRATE=true
       - BEVY_TECHNICAL_DEMO__HTTP_SERVER__HOST=0.0.0.0
       - BEVY_TECHNICAL_DEMO__HTTP_SERVER__PORT=80
       - BEVY_TECHNICAL_DEMO__QUIC_SERVER__HOST=0.0.0.0
@@ -27,3 +31,10 @@ services:
       - ./.docker-compose/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - bevy-technical-demo
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=bevy_technical_demo
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432/tcp"

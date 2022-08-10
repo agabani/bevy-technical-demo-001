@@ -2,6 +2,7 @@
 
 !/.docker
 !/examples
+!/migrations
 !/src
 !/Cargo.lock
 !/Cargo.toml

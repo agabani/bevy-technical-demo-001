@@ -1,0 +1,9 @@
+{
+  "database": {
+    "require_ssl": false,
+    "migration": {
+      "create_database": true,
+      "migrate": true
+    }
+  }
+}

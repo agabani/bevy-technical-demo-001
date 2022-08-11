@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::protocol;
+use crate::{database, protocol};
 
 pub(crate) struct Plugin;
 
@@ -21,11 +21,7 @@ impl bevy::prelude::Plugin for Plugin {
 
         #[cfg(feature = "server")]
         {
-            let my_local_ip = local_ip_address::local_ip().unwrap();
-            info!(
-                ip = ?my_local_ip,
-                "Server IP",
-            );
+            app.add_startup_system(setup).add_system(server_last_seen);
         }
     }
 }
@@ -35,6 +31,53 @@ pub(crate) struct Connection(pub(crate) tokio::sync::mpsc::UnboundedSender<proto
 
 #[derive(Component)]
 pub(crate) struct ConnectionId(pub(crate) usize);
+
+struct ServerDiscoveryTimer(Timer);
+
+pub(crate) struct ServerPublicId(pub(crate) uuid::Uuid);
+
+pub(crate) struct ServerEndpoint {
+    pub(crate) ip_address: String,
+    pub(crate) port: u16,
+}
+
+#[cfg(feature = "server")]
+fn setup(
+    mut commands: Commands,
+    server_public_id: Res<ServerPublicId>,
+    server_endpoint: Res<ServerEndpoint>,
+    sender: ResMut<tokio::sync::mpsc::UnboundedSender<database::Request>>,
+) {
+    commands.insert_resource(ServerDiscoveryTimer(Timer::new(
+        std::time::Duration::from_secs(1),
+        true,
+    )));
+
+    sender
+        .send(database::Request::RegisterServer {
+            public_id: server_public_id.0.clone(),
+            ip_address: server_endpoint.ip_address.clone(),
+            port: server_endpoint.port,
+        })
+        .unwrap();
+}
+
+fn server_last_seen(
+    time: Res<Time>,
+    mut timer: ResMut<ServerDiscoveryTimer>,
+    server_public_id: Res<ServerPublicId>,
+    sender: ResMut<tokio::sync::mpsc::UnboundedSender<database::Request>>,
+) {
+    timer.0.tick(time.delta());
+
+    if timer.0.finished() {
+        sender
+            .send(database::Request::UpdateServerLastSeen {
+                public_id: server_public_id.0.clone(),
+            })
+            .unwrap();
+    }
+}
 
 fn multiplex(
     mut receiver: ResMut<tokio::sync::mpsc::UnboundedReceiver<protocol::Event>>,

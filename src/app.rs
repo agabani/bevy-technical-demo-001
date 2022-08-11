@@ -28,7 +28,17 @@ pub fn run() -> crate::Result<()> {
 
         let config = config::load(&[])?;
 
-        runtime.block_on(database::Database::migrate(&config))?;
+        let (request_sender, request_receiver) = tokio::sync::mpsc::unbounded_channel();
+        let (response_sender, response_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+        app.insert_resource(request_sender);
+        app.insert_resource(response_receiver);
+
+        runtime.spawn(async move {
+            if let Err(error) = database::run(config, request_receiver, response_sender).await {
+                error!(error = error, "error");
+            }
+        });
     }
 
     // configure networking
@@ -37,9 +47,19 @@ pub fn run() -> crate::Result<()> {
         use crate::{config, network, quic};
 
         let config = config::load(&[])?;
-        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<crate::protocol::Event>();
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
 
         app.insert_resource(receiver);
+
+        #[cfg(feature = "server")]
+        {
+            app.insert_resource(network::ServerPublicId(uuid::Uuid::new_v4()));
+            app.insert_resource(network::ServerEndpoint {
+                ip_address: local_ip_address::local_ip().unwrap().to_string(),
+                port: config.quic_server.port,
+            });
+        }
+
         app.add_plugin(network::Plugin);
 
         #[cfg(feature = "client")]

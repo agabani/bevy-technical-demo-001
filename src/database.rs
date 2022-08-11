@@ -1,5 +1,6 @@
 use std::path;
 
+use bevy::prelude::*;
 use sqlx::{
     migrate::{MigrateDatabase, Migrator},
     postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgSslMode},
@@ -8,6 +9,65 @@ use sqlx::{
 
 use crate::config;
 
+pub(crate) async fn run(
+    config: config::Config,
+    mut receiver: tokio::sync::mpsc::UnboundedReceiver<Request>,
+    sender: tokio::sync::mpsc::UnboundedSender<Response>,
+) -> crate::Result<()> {
+    Database::migrate(&config).await?;
+
+    let database = Database::new(&config).await?;
+
+    while let Some(message) = receiver.recv().await {
+        tokio::spawn(handle_request(database.clone(), sender.clone(), message));
+    }
+
+    info!("this shouldn't have happened");
+
+    Ok(())
+}
+
+async fn handle_request(
+    database: Database,
+    sender: tokio::sync::mpsc::UnboundedSender<Response>,
+    request: Request,
+) -> crate::Result<()> {
+    match request {
+        Request::RegisterServer {
+            public_id,
+            ip_address,
+            port,
+        } => {
+            database
+                .register_server(public_id, ip_address, port.into())
+                .await?;
+
+            sender.send(Response::RegisteredServer)?;
+        }
+        Request::UpdateServerLastSeen { public_id } => database.update_last_seen(public_id).await?,
+    };
+
+    Ok(())
+}
+
+#[derive(Debug)]
+pub enum Request {
+    RegisterServer {
+        public_id: uuid::Uuid,
+        ip_address: String,
+        port: u16,
+    },
+    UpdateServerLastSeen {
+        public_id: uuid::Uuid,
+    },
+}
+
+#[derive(Debug)]
+pub enum Response {
+    RegisteredServer,
+}
+
+#[derive(Clone)]
 pub(crate) struct Database {
     pool: PgPool,
 }
@@ -47,15 +107,82 @@ impl Database {
         Ok(())
     }
 
-    pub(crate) async fn add_server(&self, ip_address: String) -> crate::Result<()> {
-        sqlx::query!(
+    async fn register_server(
+        &self,
+        public_id: uuid::Uuid,
+        ip_address: String,
+        port: i32,
+    ) -> crate::Result<()> {
+        let id = sqlx::query!(
             r#"
-INSERT INTO server (ip_address, last_seen)
-VALUES ($1, NOW())
-ON CONFLICT (ip_address) DO UPDATE SET last_seen = NOW()
+INSERT INTO server (public_id, last_seen, ip_address, port)
+VALUES ($1, NOW(), $2, $3)
+ON CONFLICT (ip_address, port) DO NOTHING
 RETURNING id;
 "#,
-            ip_address
+            public_id,
+            ip_address,
+            port
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if id.is_some() {
+            // todo: send registered
+            return Ok(());
+        }
+
+        let id = sqlx::query!(
+            r#"
+DELETE
+FROM server
+WHERE ip_address = $1
+    AND port = $2
+    AND last_seen < NOW() - INTERVAL '5 seconds'
+RETURNING id;
+            "#,
+            ip_address,
+            port
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if id.is_none() {
+            // todo: send conflict
+            return Ok(());
+        }
+
+        let id = sqlx::query!(
+            r#"
+INSERT INTO server (public_id, last_seen, ip_address, port)
+VALUES ($1, NOW(), $2, $3)
+ON CONFLICT (ip_address, port) DO NOTHING
+RETURNING id;
+"#,
+            public_id,
+            ip_address,
+            port
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if id.is_none() {
+            // todo: send registration error
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
+    pub(crate) async fn update_last_seen(&self, public_id: uuid::Uuid) -> crate::Result<()> {
+        sqlx::query!(
+            r#"
+UPDATE server
+SET last_seen = NOW()
+WHERE public_id = $1
+RETURNING id;
+        "#,
+            public_id
         )
         .fetch_one(&self.pool)
         .await?;

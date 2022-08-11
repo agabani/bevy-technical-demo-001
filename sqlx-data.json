@@ -1,6 +1,6 @@
 {
   "db": "PostgreSQL",
-  "bb045e628775017adaa85765f9caa96e57ec9f9d8e182aa58a4bdd3fa51e6efd": {
+  "09bc1a46301a80e337c641d8c2b34237bd6a25122f9c773d2c8adf7de1f4b7ba": {
     "describe": {
       "columns": [
         {
@@ -14,10 +14,53 @@
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Uuid"
         ]
       }
     },
-    "query": "\nINSERT INTO server (ip_address, last_seen)\nVALUES ($1, NOW())\nON CONFLICT (ip_address) DO UPDATE SET last_seen = NOW()\nRETURNING id;\n"
+    "query": "\nUPDATE server\nSET last_seen = NOW()\nWHERE public_id = $1\nRETURNING id;\n        "
+  },
+  "8be64ec4e9346b50da5077283506eba825a5ca1095df6f5faf2ad9c8bcb97f93": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO server (public_id, last_seen, ip_address, port)\nVALUES ($1, NOW(), $2, $3)\nON CONFLICT (ip_address, port) DO NOTHING\nRETURNING id;\n"
+  },
+  "fd94f05d67b1bca75fe386b498bc8372002b8aaf70fd1bcd2efbd98f9fa679de": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\nDELETE\nFROM server\nWHERE ip_address = $1\n    AND port = $2\n    AND last_seen < NOW() - INTERVAL '5 seconds'\nRETURNING id;\n            "
   }
 }

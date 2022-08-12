@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::character;
+use crate::{character, network};
 
 pub fn run() -> crate::Result<()> {
     #[cfg(any(feature = "client", feature = "server"))]
@@ -46,7 +46,7 @@ pub fn run() -> crate::Result<()> {
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]
     {
-        use crate::{config, network::quic, network_1};
+        use crate::{config, network_1};
 
         let config = config::load(&[])?;
         let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -64,20 +64,13 @@ pub fn run() -> crate::Result<()> {
 
         app.add_plugin(network_1::Plugin);
 
-        #[cfg(feature = "client")]
-        {
-            #[allow(clippy::redundant_clone)]
-            let quic_config = config.clone();
+        let quic_config = config.clone();
+        runtime.spawn(async move {
+            if let Err(error) = network::run(quic_config, sender).await {
+                error!(error = error, "error");
+            }
+        });
 
-            #[allow(clippy::redundant_clone)]
-            let sender = sender.clone();
-
-            runtime.spawn(async move {
-                if let Err(error) = quic::client::run(quic_config, sender).await {
-                    error!(error = error, "error");
-                }
-            });
-        }
         #[cfg(feature = "server")]
         {
             use crate::http_server;
@@ -87,18 +80,6 @@ pub fn run() -> crate::Result<()> {
 
             runtime.spawn(async move {
                 if let Err(error) = http_server::run(http_config).await {
-                    error!(error = error, "error");
-                }
-            });
-
-            #[allow(clippy::redundant_clone)]
-            let quic_config = config.clone();
-
-            #[allow(clippy::redundant_clone)]
-            let sender = sender.clone();
-
-            runtime.spawn(async move {
-                if let Err(error) = quic::server::run(quic_config, sender).await {
                     error!(error = error, "error");
                 }
             });

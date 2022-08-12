@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{database, network::protocol};
+#[cfg(feature = "server")]
+use crate::database;
+
+use crate::network::protocol;
 
 pub(crate) struct Plugin;
 

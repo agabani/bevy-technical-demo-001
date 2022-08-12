@@ -7,7 +7,6 @@ mod database;
 mod http_server;
 mod network;
 mod network_1;
-mod quic;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 

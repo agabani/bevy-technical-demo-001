@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use tokio::io::AsyncReadExt as _;
 
-use crate::{config, quic::shared};
+use crate::{config, network::quic::shared};
 
 pub(crate) async fn run(
     config: config::Config,

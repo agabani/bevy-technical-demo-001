@@ -46,7 +46,7 @@ pub fn run() -> crate::Result<()> {
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]
     {
-        use crate::{config, network_1, quic};
+        use crate::{config, network::quic, network_1};
 
         let config = config::load(&[])?;
         let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();

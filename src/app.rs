@@ -46,7 +46,7 @@ pub fn run() -> crate::Result<()> {
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]
     {
-        use crate::{config, network_1};
+        use crate::config;
 
         let config = config::load(&[])?;
         let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -55,14 +55,14 @@ pub fn run() -> crate::Result<()> {
 
         #[cfg(feature = "server")]
         {
-            app.insert_resource(network_1::ServerPublicId(uuid::Uuid::new_v4()));
-            app.insert_resource(network_1::ServerEndpoint {
+            app.insert_resource(network::plugin::ServerPublicId(uuid::Uuid::new_v4()));
+            app.insert_resource(network::plugin::ServerEndpoint {
                 ip_address: local_ip_address::local_ip().unwrap().to_string(),
                 port: config.quic_server.port,
             });
         }
 
-        app.add_plugin(network_1::Plugin);
+        app.add_plugin(network::plugin::Plugin);
 
         let quic_config = config.clone();
         runtime.spawn(async move {

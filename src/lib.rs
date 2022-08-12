@@ -6,7 +6,6 @@ mod database;
 #[cfg(feature = "server")]
 mod http_server;
 mod network;
-mod network_1;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 

@@ -1,5 +1,5 @@
 mod backend;
-mod plugin;
+pub(crate) mod plugin;
 pub mod protocol;
 pub(crate) mod quic;
 

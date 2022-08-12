@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{network::protocol, network_1};
+use crate::network::{self, protocol};
 
 pub(crate) struct Plugin;
 
@@ -20,8 +20,8 @@ pub(crate) struct Character(pub(crate) String);
 fn spawn(
     mut events: EventReader<protocol::Endpoint<protocol::Spawn>>,
     mut spawned: EventWriter<protocol::Endpoint<protocol::Spawned>>,
-    characters: Query<(&Character, &network_1::ConnectionId)>,
-    connections: Query<(&network_1::Connection, &network_1::ConnectionId)>,
+    characters: Query<(&Character, &network::plugin::ConnectionId)>,
+    connections: Query<(&network::plugin::Connection, &network::plugin::ConnectionId)>,
 ) {
     for event in events.iter() {
         let span = info_span!("connection", connection_id = ?event.connection_id);
@@ -79,7 +79,7 @@ fn spawned(mut commands: Commands, mut events: EventReader<protocol::Endpoint<pr
             .spawn()
             .insert(Name::new("character"))
             .insert(Character(event.data.id.clone()))
-            .insert(network_1::ConnectionId(event.connection_id))
+            .insert(network::plugin::ConnectionId(event.connection_id))
             .id();
         info!(entity_id = entity.id(), "character spawned");
     }
@@ -97,8 +97,8 @@ fn despawn(mut events: EventReader<protocol::Endpoint<protocol::Despawn>>) {
 fn despawn_network(
     mut events: EventReader<protocol::Endpoint<protocol::Destroyed>>,
     mut despawned: EventWriter<protocol::Endpoint<protocol::Despawned>>,
-    characters: Query<(&Character, &network_1::ConnectionId)>,
-    connections: Query<(&network_1::Connection, &network_1::ConnectionId)>,
+    characters: Query<(&Character, &network::plugin::ConnectionId)>,
+    connections: Query<(&network::plugin::Connection, &network::plugin::ConnectionId)>,
 ) {
     for event in events.iter() {
         let span = info_span!("connection", connection_id = ?event.connection_id);

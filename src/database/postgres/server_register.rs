@@ -1,7 +1,7 @@
-use super::{Database, Response};
+use super::{Postgres, Response};
 
-impl Database {
-    pub(super) async fn server_register(
+impl Postgres {
+    pub(crate) async fn server_register(
         &self,
         public_id: uuid::Uuid,
         ip_address: String,

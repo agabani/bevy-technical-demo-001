@@ -46,7 +46,7 @@ fn setup(
     mut commands: Commands,
     server_public_id: Res<ServerPublicId>,
     server_endpoint: Res<ServerEndpoint>,
-    sender: ResMut<tokio::sync::mpsc::UnboundedSender<database::Request>>,
+    sender: ResMut<database::protocol::Sender>,
 ) {
     commands.insert_resource(ServerDiscoveryTimer(Timer::new(
         std::time::Duration::from_secs(1),
@@ -54,7 +54,7 @@ fn setup(
     )));
 
     sender
-        .send(database::Request::ServerRegister {
+        .send(database::protocol::Request::ServerRegister {
             public_id: server_public_id.0.clone(),
             ip_address: server_endpoint.ip_address.clone(),
             port: server_endpoint.port,
@@ -67,13 +67,13 @@ fn update_last_seen(
     time: Res<Time>,
     mut timer: ResMut<ServerDiscoveryTimer>,
     server_public_id: Res<ServerPublicId>,
-    sender: ResMut<tokio::sync::mpsc::UnboundedSender<database::Request>>,
+    sender: ResMut<database::protocol::Sender>,
 ) {
     timer.0.tick(time.delta());
 
     if timer.0.finished() {
         sender
-            .send(database::Request::ServerUpdateServerLastSeen {
+            .send(database::protocol::Request::ServerUpdateServerLastSeen {
                 public_id: server_public_id.0.clone(),
             })
             .unwrap();

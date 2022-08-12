@@ -1,7 +1,7 @@
-use super::{Database, Response};
+use super::{Postgres, Response};
 
-impl Database {
-    pub(super) async fn update_last_seen(&self, public_id: uuid::Uuid) -> crate::Result<()> {
+impl Postgres {
+    pub(crate) async fn update_last_seen(&self, public_id: uuid::Uuid) -> crate::Result<()> {
         let id = sqlx::query!(
             r#"
 UPDATE server

@@ -34,6 +34,8 @@ pub fn run() -> crate::Result<()> {
         app.insert_resource(request_sender);
         app.insert_resource(response_receiver);
 
+        app.add_plugin(database::plugin::Plugin);
+
         runtime.spawn(async move {
             if let Err(error) = database::run(config, request_receiver, response_sender).await {
                 error!(error = error, "error");

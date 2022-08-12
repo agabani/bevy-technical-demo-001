@@ -6,7 +6,7 @@ use crate::{config, quic::shared};
 
 pub(crate) async fn run(
     config: config::Config,
-    sender: tokio::sync::mpsc::UnboundedSender<crate::protocol::Event>,
+    sender: tokio::sync::mpsc::UnboundedSender<crate::network::protocol::Event>,
 ) -> crate::Result<()> {
     let (endpoint, mut incoming) = create_endpoint(&config).await?;
 
@@ -71,7 +71,7 @@ async fn create_endpoint(c: &config::Config) -> crate::Result<(quinn::Endpoint, 
 
 async fn handle_connection(
     connection: quinn::Connecting,
-    sender: tokio::sync::mpsc::UnboundedSender<crate::protocol::Event>,
+    sender: tokio::sync::mpsc::UnboundedSender<crate::network::protocol::Event>,
 ) -> crate::Result<()> {
     shared::handle_connection(connection.await?, sender).await
 }

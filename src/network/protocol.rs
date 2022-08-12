@@ -1,3 +1,9 @@
+pub type Receiver = tokio::sync::mpsc::UnboundedReceiver<Event>;
+pub type Sender = tokio::sync::mpsc::UnboundedSender<Payload>;
+
+pub type InternalSender = tokio::sync::mpsc::UnboundedReceiver<Event>;
+pub type InternalReceiver = tokio::sync::mpsc::UnboundedSender<Payload>;
+
 #[derive(Debug)]
 pub struct Event {
     pub connection_id: usize,
@@ -24,7 +30,7 @@ pub enum Connection {
 
 #[derive(Debug)]
 pub struct Created {
-    pub sender: tokio::sync::mpsc::UnboundedSender<crate::protocol::Payload>,
+    pub sender: tokio::sync::mpsc::UnboundedSender<Payload>,
 }
 
 #[derive(Debug)]

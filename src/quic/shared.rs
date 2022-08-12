@@ -1,7 +1,7 @@
 use bevy::{prelude::*, utils::tracing::Instrument};
 use futures::StreamExt as _;
 
-use crate::protocol;
+use crate::network::protocol;
 
 pub(super) async fn handle_connection(
     connection: quinn::NewConnection,

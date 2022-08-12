@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{database, protocol};
+use crate::{database, network::protocol};
 
 pub(crate) struct Plugin;
 

@@ -4,7 +4,8 @@ pub mod config;
 #[cfg(feature = "server")]
 mod database;
 #[cfg(feature = "server")]
-mod http_server;
+mod http;
+#[cfg(any(feature = "client", feature = "server"))]
 mod network;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

@@ -30,6 +30,8 @@ FROM scratch
 
 USER 10000:10000
 
+ENV RUST_LOG=sqlx=warn,info
+
 COPY --chown=0:0 migrations/ /migrations/
 COPY --chown=0:0 --from=builder /home/appuser/app/target/release/bevy-technical-demo /
 

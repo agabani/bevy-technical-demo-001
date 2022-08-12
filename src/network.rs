@@ -21,7 +21,7 @@ impl bevy::prelude::Plugin for Plugin {
 
         #[cfg(feature = "server")]
         {
-            app.add_startup_system(setup).add_system(server_last_seen);
+            app.add_startup_system(setup).add_system(update_last_seen);
         }
     }
 }
@@ -54,7 +54,7 @@ fn setup(
     )));
 
     sender
-        .send(database::Request::RegisterServer {
+        .send(database::Request::ServerRegister {
             public_id: server_public_id.0.clone(),
             ip_address: server_endpoint.ip_address.clone(),
             port: server_endpoint.port,
@@ -62,7 +62,8 @@ fn setup(
         .unwrap();
 }
 
-fn server_last_seen(
+#[cfg(feature = "server")]
+fn update_last_seen(
     time: Res<Time>,
     mut timer: ResMut<ServerDiscoveryTimer>,
     server_public_id: Res<ServerPublicId>,
@@ -72,7 +73,7 @@ fn server_last_seen(
 
     if timer.0.finished() {
         sender
-            .send(database::Request::UpdateServerLastSeen {
+            .send(database::Request::ServerUpdateServerLastSeen {
                 public_id: server_public_id.0.clone(),
             })
             .unwrap();

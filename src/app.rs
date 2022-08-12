@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
-use crate::{character, network};
+use crate::{character, config};
 
 pub fn run() -> crate::Result<()> {
     #[cfg(any(feature = "client", feature = "server"))]
     let runtime = tokio::runtime::Runtime::new()?;
 
     let mut app = App::new();
+
+    let config = config::load(&[])?;
 
     // configure default plugins
     #[cfg(feature = "client")]
@@ -24,66 +26,29 @@ pub fn run() -> crate::Result<()> {
     // configure database
     #[cfg(feature = "server")]
     {
-        use crate::{config, database};
-
-        let config = config::load(&[])?;
-
-        let (request_sender, request_receiver) = tokio::sync::mpsc::unbounded_channel();
-        let (response_sender, response_receiver) = tokio::sync::mpsc::unbounded_channel();
-
-        app.insert_resource(request_sender);
-        app.insert_resource(response_receiver);
-
-        app.add_plugin(database::plugin::Plugin);
-
-        runtime.spawn(async move {
-            if let Err(error) = database::run(config, request_receiver, response_sender).await {
-                error!(error = error, "error");
-            }
-        });
+        use crate::database;
+        database::configure(&mut app, &config, &runtime);
     }
 
     // configure networking
     #[cfg(any(feature = "client", feature = "server"))]
     {
-        use crate::config;
+        use crate::network;
+        network::configure(&mut app, &config, &runtime);
+    }
 
-        let config = config::load(&[])?;
-        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    #[cfg(feature = "server")]
+    {
+        use crate::http_server;
 
-        app.insert_resource(receiver);
+        #[allow(clippy::redundant_clone)]
+        let http_config = config.clone();
 
-        #[cfg(feature = "server")]
-        {
-            app.insert_resource(network::plugin::ServerPublicId(uuid::Uuid::new_v4()));
-            app.insert_resource(network::plugin::ServerEndpoint {
-                ip_address: local_ip_address::local_ip().unwrap().to_string(),
-                port: config.quic_server.port,
-            });
-        }
-
-        app.add_plugin(network::plugin::Plugin);
-
-        let quic_config = config.clone();
         runtime.spawn(async move {
-            if let Err(error) = network::run(quic_config, sender).await {
+            if let Err(error) = http_server::run(http_config).await {
                 error!(error = error, "error");
             }
         });
-
-        #[cfg(feature = "server")]
-        {
-            use crate::http_server;
-
-            #[allow(clippy::redundant_clone)]
-            let http_config = config.clone();
-
-            runtime.spawn(async move {
-                if let Err(error) = http_server::run(http_config).await {
-                    error!(error = error, "error");
-                }
-            });
-        }
     }
 
     app.run();

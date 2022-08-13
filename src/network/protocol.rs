@@ -11,12 +11,6 @@ pub struct Event {
 }
 
 #[derive(Debug)]
-pub struct Endpoint<T> {
-    pub connection_id: usize,
-    pub data: T,
-}
-
-#[derive(Debug)]
 pub enum Data {
     Connection(Connection),
     Payload(Payload),
@@ -36,14 +30,14 @@ pub struct Created {
 #[derive(Debug)]
 pub struct Destroyed;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(tag = "version", content = "payload")]
 pub enum Payload {
     #[serde(rename = "1")]
     V1(Version1),
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(tag = "type", content = "message")]
 pub enum Version1 {
     #[serde(rename = "ping")]
@@ -65,7 +59,7 @@ pub enum Version1 {
     Despawned(Despawned),
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Spawn;
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -80,7 +74,7 @@ pub struct Spawned {
     pub y: f32,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Despawn;
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]

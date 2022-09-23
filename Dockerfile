@@ -1,5 +1,5 @@
 # 1: Build
-FROM rust:1.63.0-alpine3.16 as builder
+FROM rust:1.64.0-alpine3.16 as builder
 
 # 1a: Prepare toolchain
 RUN apk update && \

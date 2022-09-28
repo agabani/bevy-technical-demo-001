@@ -10,7 +10,7 @@ config = "0.13.2"
 futures = "0.3.24"
 hyper = { version = "0.14.20", features = ["full"] }
 quinn = "0.8.5"
-rcgen = "0.9.3"
+rcgen = "0.9.4"
 rustls = { version = "0.20.6", features = ["quic"] }
 rustls-pemfile = "1.0.1"
 serde = { version = "1.0.145", features = ["derive"] }
